@@ -16,6 +16,10 @@ const saltRounds = 10;
 //cors
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
+
+// app.use(express.json({ limit: "50mb" }));
+// app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
 // End code cors
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,8 +42,10 @@ const connection = mysql.createConnection({
 //function register
 app.post("/register", jsonParser, function (req, res, next) {
   // bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
+  var sql =
+    "INSERT INTO users(users_name,password,user_status,names,phone) VALUES(?,?,?,?,?)";
   connection.execute(
-    "INSERT INTO users(users_name,password,user_status,names,phone) VALUES(?,?,?,?,?)",
+    sql,
     [
       req.body.users_name,
       req.body.password,
@@ -52,7 +58,7 @@ app.post("/register", jsonParser, function (req, res, next) {
         res.json({ status: "error", message: err });
         return;
       }
-      res.json({ status: "ok", results });
+      res.json({ status: "ok" });
     }
   );
 });
@@ -64,6 +70,7 @@ app.post("/register", jsonParser, function (req, res, next) {
 //function edit_user
 app.put("/edit_user/:id", jsonParser, function (req, res, next) {
   let id = req.params.id;
+  var sql = `UPDATE users SET ? WHERE user_id = ${id}`;
   const data = {
     users_name: req.body.users_name,
     password: req.body.password,
@@ -71,20 +78,16 @@ app.put("/edit_user/:id", jsonParser, function (req, res, next) {
     names: req.body.names,
     phone: req.body.phone,
   };
-  connection.query(
-    `UPDATE users SET ? WHERE id = ${id}`,
-    [data],
-    function (err, results, fields) {
-      if (err) {
-        res.json({ status: "error", message: err });
-        return;
-      }
-      res.json({
-        status: "ok",
-        results: " Updated Sucsess!!",
-      });
+  connection.query(sql, [data], function (err, results, fields) {
+    if (err) {
+      res.json({ status: "error", message: err });
+      return;
     }
-  );
+    res.json({
+      status: "ok",
+      results: " Updated Sucsess!!",
+    });
+  });
 });
 //function edit_user
 
@@ -94,7 +97,7 @@ app.put("/edit_user/:id", jsonParser, function (req, res, next) {
 app.delete("/delete_user/:id", jsonParser, function (req, res, next) {
   const { id } = req.params;
   connection.query(
-    `DELETE FROM users WHERE id = ${id}`,
+    `DELETE FROM users WHERE user_id = ${id}`,
     [id],
     function (err, results, fields) {
       if (err) {
@@ -108,35 +111,55 @@ app.delete("/delete_user/:id", jsonParser, function (req, res, next) {
     }
   );
 });
+
+app.delete("/delete_user", jsonParser, function (req, res, next) {
+  connection.query(
+    `DELETE FROM users WHERE user_id`,
+    function (err, results, fields) {
+      if (err) {
+        res.json({ status: "error", message: err });
+        return;
+      }
+      res.json({
+        status: "ok",
+        results: "Deleteted Sucsess!!",
+      });
+    }
+  );
+});
+
 //function edit_user
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //function login
 app.post("/login", jsonParser, function (req, res, next) {
-  var sql ="SELECT * FROM users WHERE users_name =?" 
-  connection.execute( sql ,[req.body.users_name],
-    function (err, users, fields) {
-      if (err) {
-        res.json({ status: "error", message: "err" });
-        return;
-      }
-      if (users.length == 0) {
-        res.json({ status: "error", message: "no user foud" });
-        return;
-      }
-      bcrypt.compare(function (err, fields) {
-        if (req.body.password == users[0].password) {
-          var token = jwt.sign({ email: users[0].users_name }, "From-login", {
-            expiresIn: "4h",
-          });
-          res.json({ status: "ok", message: "Login Sucsess", users: users, token});
-        } else {
-          res.json({ status: "err", message: "Login False" ,err });
-        }
-      });
+  var sql = "SELECT * FROM users WHERE users_name = ?";
+  connection.execute(sql, [req.body.users_name], function (err, users, fields) {
+    if (err) {
+      res.json({ status: "error", message: "err" });
+      return;
     }
-  );
+    if (users.length == 0) {
+      res.json({ status: "error", message: "no user foud" });
+      return;
+    }
+    bcrypt.compare(function (err, fields) {
+      if (req.body.password == users[0].password) {
+        var token = jwt.sign({ email: users[0].users_name }, "From-login", {
+          expiresIn: "4h",
+        });
+        res.json({
+          status: "ok",
+          message: "Login Sucsess",
+          user_id: users[0].user_id,
+          token,
+        });
+      } else {
+        res.json({ status: false, message: "Login False", err });
+      }
+    });
+  });
 });
 //function login
 
@@ -157,27 +180,29 @@ app.post("/authen", jsonParser, function (req, res, next) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //function profile ถ้าจะจำกัดการแสดงข้อมมูลใช้ตัวนี้ "LIMIT 2"
+
 app.get("/profile", jsonParser, function (req, res, next) {
   connection.query("SELECT * FROM users ", function (err, results, fields) {
     if (results) {
-      res.json({ status: "ok", results });
+      res.json({ status: true, results });
     } else {
-      res.json({ status: "error", message: err });
+      res.json({ status: false, message: err });
       return;
     }
   });
 });
+
 //profile By id
 app.get("/profile/:id", jsonParser, function (req, res, next) {
   const id = req.params.id;
   connection.query(
-    "SELECT * FROM `users` WHERE id = ?",
+    "SELECT * FROM `users` WHERE user_id = ?",
     [id],
     function (err, results, fields) {
       if (results) {
-        res.json({ status: "ok", results });
+        res.json({ status: true, results });
       } else {
-        res.json({ status: "error", message: err });
+        res.json({ status: false, message: err });
         return;
       }
     }
@@ -192,9 +217,10 @@ app.get("/profile/:id", jsonParser, function (req, res, next) {
 //function add_information
 app.post("/add_information", jsonParser, function (req, res, next) {
   connection.query(
-    "INSERT INTO repair_information (staus,date_repair,work_group,work,phone,computer_name,responsible_person,commodity_code,ip_address,equipment,other,problem_symptom,requirements,name_sender,name_responsible,date_receive) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    "INSERT INTO repair_information (staus,user_id,date_repair,work_group,work,phone,computer_name,responsible_person,commodity_code,ip_address,equipment,other,problem_symptom,requirements,name_sender,name_responsible,date_receive) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
     [
       req.body.staus,
+      req.body.user_id,
       req.body.date_repair,
       req.body.work_group,
       req.body.work,
@@ -213,8 +239,8 @@ app.post("/add_information", jsonParser, function (req, res, next) {
     ],
     function (err, results, fields) {
       if (err) {
-        res.json({ status: false , message: err });
-        // console.log(results);
+        res.json({ status: false, message: err });
+        //console.log(results);
         return;
       }
       res.json({ status: true });
@@ -243,18 +269,18 @@ app.put("/edit_information/:id", jsonParser, function (req, res, next) {
     // problem_symptom: req.body.problem_symptom,
     // requirements: req.body.requirements,
     // name_sender: req.body.name_sender,
-    // name_responsible: req.body.name_responsible,
-    // date_receive: req.body.date_receive,
+    name_responsible: req.body.name_responsible,
+    date_receive: req.body.date_receive,
   };
   connection.query(
     `UPDATE repair_information SET ? WHERE id_repair_i = ${id}`,
     [data],
     function (err, results, fields) {
       if (err) {
-        res.json({ status: "error", message: err });
+        res.json({ status: false, message: err });
         return;
       }
-      // console.log(results);
+      //console.log(results);
       res.json({
         status: "ok",
         results: "Updated Sucsess!!",
@@ -263,6 +289,46 @@ app.put("/edit_information/:id", jsonParser, function (req, res, next) {
     }
   );
 });
+
+app.put("/edit_information_addmind/:id", jsonParser, function (req, res, next) {
+  let id = req.params.id;
+  const data = {
+    // user_id:req.body.user_id,
+    // staus: req.body.staus,
+    // date_repair: req.body.date_repair,
+    work_group: req.body.work_group,
+    work: req.body.work,
+    phone: req.body.phone,
+    // computer_name: req.body.computer_name,
+    responsible_person: req.body.responsible_person,
+    commodity_code: req.body.commodity_code,
+    // ip_address: req.body.ip_address,
+    equipment: req.body.equipment,
+    // other: req.body.other,
+    problem_symptom: req.body.problem_symptom,
+    requirements: req.body.requirements,
+    name_sender: req.body.name_sender,
+    // name_responsible: req.body.name_responsible,
+    // date_receive: req.body.date_receive,
+  };
+  connection.query(
+    `UPDATE repair_information SET ? WHERE id_repair_i = ${id}`,
+    [data],
+    function (err, results, fields) {
+      if (err) {
+        res.json({ status: false, message: err });
+        return;
+      }
+      //console.log(results);
+      res.json({
+        status: "ok",
+        results: "Updated Sucsess!!",
+        state: true,
+      });
+    }
+  );
+});
+
 //edit_information
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -275,7 +341,7 @@ app.delete("/delete_information/:id", jsonParser, function (req, res, next) {
     [id],
     function (err, results, fields) {
       if (err) {
-        res.json({ status: "error", message: err });
+        res.json({ status: false, message: err });
         return;
       }
       res.json({
@@ -285,6 +351,23 @@ app.delete("/delete_information/:id", jsonParser, function (req, res, next) {
     }
   );
 });
+
+app.delete("/delete_information", jsonParser, function (req, res, next) {
+  connection.query(
+    `DELETE FROM repair_information`,
+    function (err, results, fields) {
+      if (err) {
+        res.json({ status: false, message: err });
+        return;
+      }
+      res.json({
+        status: "ok",
+        results: "Deleteted Sucsess!!",
+      });
+    }
+  );
+});
+
 //function Delete_information
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -298,10 +381,27 @@ app.get("/Getall_information", jsonParser, function (req, res, next) {
     function (err, results, fields) {
       if (results) {
         var lengthdata = results.length;
-        // console.log(results);
-        res.status(200).json({ status: true , lengthdata: lengthdata });
+        // //console.log(results);
+        res.status(200).json({ status: true, lengthdata: lengthdata, results });
       } else {
-        res.json({ status: "error", message: err });
+        res.json({ status: false, message: err });
+        return;
+      }
+    }
+  );
+});
+
+app.get("/Get_information", jsonParser, function (req, res, next) {
+  const id = req.params.id;
+  connection.query(
+    `SELECT * FROM repair_information WHERE id_repair_i = ${id}`,
+    function (err, results, fields) {
+      if (results) {
+        // var lengthdata = results.length;
+        // //console.log(results);
+        res.status(200).json({ status: true, results });
+      } else {
+        res.json({ status: false, message: err });
         return;
       }
     }
@@ -314,10 +414,12 @@ app.get("/Get_byID/:id_repair_i", jsonParser, function (req, res, next) {
   connection.query(sql, function (err, results, fields) {
     if (results) {
       var lengthdata = results.length;
-      // console.log(results);
-      res.status(200).json({ status: true, lengthdata: lengthdata, results });
+      // //console.log(results);
+      res
+        .status(200)
+        .json({ staus: "ok", lengthdata: lengthdata, results: results[0] });
     } else {
-      res.json({ status: "error", message: err, fields: fields });
+      res.json({ status: false, message: err, fields: fields });
       return;
     }
   });
@@ -351,13 +453,12 @@ app.get("/Get_req/:?", jsonParser, function (req, res, next) {
   params.push(start_idx);
   params.push(limit);
   connection.query(sql, params, function (err, results, fields) {
+    ////console.log(results);
     if (results) {
       var lengthdata = results.length;
-      res
-        .status(200)
-        .json({ status: true , lengthdata: lengthdata, results, reeor });
+      res.status(200).json({ status: true, results: results, reeor });
     } else {
-      res.json({ status: "error", message: err });
+      res.json({ status: false, message: err });
       return;
     }
   });
@@ -390,16 +491,16 @@ app.get("/Get_all_req/:?", jsonParser, function (req, res, next) {
   connection.query(sql, function (err, results, fields) {
     if (results) {
       var lengthdata = results.length;
-      // console.log(results);
+      ////console.log(results);
       res.status(200).json({ status: true, lengthdata: lengthdata, reeor });
     } else {
-      res.json({ status: "error", message: err });
+      res.json({ status: false, message: err });
       return;
     }
   });
 });
 
-app.get("/Pagination", function (req, res, next) {
+app.get("/Pagination", jsonParser, function (req, res, next) {
   const page = req.query.page;
   const per_page = req.query.per_page;
   const sort_colum = req.query.sort_colum;
@@ -421,8 +522,8 @@ app.get("/Pagination", function (req, res, next) {
   params.push(per_page);
 
   connection.execute(sql, params, function (err, results, fields) {
-    // console.log(results);
-    res.json({status: true , results: results });
+    ////console.log(results);
+    res.json({ status: true, results: results });
   });
 });
 
@@ -430,38 +531,197 @@ app.get("/Pagination", function (req, res, next) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// End code function
+// //function recipient
+
+app.post("/add_recipient", jsonParser, function (req, res, next) {
+  connection.query(
+    "INSERT INTO `recipient_name` (recipients,positions,phone,email) VALUES (?,?,?,?)",
+    [req.body.recipients, req.body.positions, req.body.phone, req.body.email],
+    function (err, results, fields) {
+      if (err) {
+        res.json({ status: false, message: err });
+        ////console.log(results);
+        return;
+      }
+      res.json({ status: true });
+    }
+  );
+});
+
+app.delete("/delete_recipient/:id", jsonParser, function (req, res, next) {
+  const { id } = req.params;
+  connection.query(
+    `DELETE FROM recipient_name WHERE recipient_id = ${id}`,
+    [id],
+    function (err, results, fields) {
+      if (err) {
+        res.json({ status: false, message: err });
+        return;
+      }
+      res.json({
+        status: "ok",
+        results: "Deleteted Sucsess!!",
+      });
+    }
+  );
+});
+
+app.put("/edit_recipient/:id", jsonParser, function (req, res, next) {
+  let id = req.params.id;
+  const data = {
+    recipients: req.body.recipients,
+    positions: req.body.positions,
+    phone: req.body.phone,
+    email: req.body.email,
+  };
+  connection.query(
+    `UPDATE recipient_name SET ? WHERE recipient_id = ${id}`,
+    [data],
+    function (err, results, fields) {
+      if (err) {
+        res.json({ status: false, message: err });
+        return;
+      }
+      //console.log(results);
+      res.json({
+        status: "ok",
+        results: "Updated Sucsess!!",
+        state: true,
+      });
+    }
+  );
+});
+
+app.get("/Getall_recipient", jsonParser, function (req, res, next) {
+  connection.query(
+    `SELECT recipients,positions FROM recipient_name `,
+    function (err, results, fields) {
+      if (results) {
+        // var lengthdata = results.length;
+        // var results = results.recipientsrecipients: results[0].recipients, positions:results[0].positions
+        // console.log(results);
+        res.status(200).json({ results });
+      } else {
+        res.json({ status: false, message: err });
+        return;
+      }
+    }
+  );
+});
+
+app.get("/all_recipient", jsonParser, function (req, res, next) {
+  // let id = req.params.id;
+  connection.query(
+    `SELECT * FROM recipient_name `,
+    function (err, results, fields) {
+      if (results) {
+        var lengthdata = results.length;
+        // var results = results.recipients WHERE recipient_id = ${id}
+        // console.log(results);
+        res.status(200).json({ status: true, lengthdata: lengthdata, results });
+      } else {
+        res.json({ status: false, message: err });
+        return;
+      }
+    }
+  );
+});
+
+// END code function recipient
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// test code
+
+// true - false
 app.get("/state/:?", jsonParser, function (req, res, next) {
   var stauss = req.query.staus;
-
-  if (stauss) {
-    if (!stauss) {
-    } else {
-      var sql = `SELECT * FROM repair_information WHERE staus = "${stauss}"`;
-    }
-  } else if (stauss === "") {
-    var sql = `SELECT * FROM repair_information`;
-  } else {
-    res.json({ status: false });
-  }
+  var sql = `SELECT * FROM repair_information WHERE staus = "${stauss}"`;
 
   connection.query(sql, function (err, results, fields) {
     if (results) {
       var lengthdata = results.length;
-      // console.log(results);
-      res
-        .status(200)
-        .json({ status: true, lengthdata: lengthdata, results: results });
+      // ////console.log(results);
+      if (lengthdata == 0) {
+        res.json({ status: false, lengthdata });
+      } else {
+        res.json({ status: true, lengthdata });
+      }
     } else {
       res.json({ status: "error", message: err });
       return;
     }
   });
 });
+
+// true - false
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// End code function
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// test code
+
+
+// app.get("/Search", jsonParser, function (req, res, next) {
+//   const search = req.query.search;
+
+//   var params = [];
+//   var sql = "SELECT * FROM repair_information ";
+//   if (search) {
+//     sql += " WHERE date_repair LIKE ? ";
+//     params.push("%" + search + "%");
+//   }
+ 
+  
+//   params.push(search);
+
+//   connection.execute(sql, params, function (err, results, fields) {
+//     ////console.log(results);
+//     res.json({ status: true, results: results });
+//   });
+// });
+
+
+
+
+
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     cb(null, "audio/");
+//   },
+//   filename: function (req, file, cb) {
+//     cb(null, file.originalname);
+//   },
+// });
+
+// const upload = multer({ storage: storage });
+
+// router.post("/audio", upload.single("audio"), (req, res) => {
+//   res.status(200).json({ message: "Audio file uploaded successfully" });
+// });
+
+//Create getsound API
+
+// function addNumbers(num1, num2) {
+//   return num1 - num2;
+// }
+
+// let result = addNumbers(1100, 640);
+// console.log(result);
+
+// const numbers = [
+
+//   1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+
+// ];
+// const evenNumbers = numbers.filter((num) => num % 2 === 0);
+// console.log(evenNumbers);
+
 // end test code
+
+//Create an API, display audio files.
+//
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -471,4 +731,4 @@ app.listen(5009, () => {
 });
 //End code port
 
-module.exports = app
+module.exports = app;
