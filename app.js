@@ -1,4 +1,4 @@
-//เรียกใช้
+//เรียกใช้ node_modules และ package เพื่อ ให้ code ทำงานได้
 var express = require("express");
 var cors = require("cors");
 var app = express();
@@ -14,11 +14,9 @@ const saltRounds = 10;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //cors
+//ประกาศใช้ cors และ urlencoded เพื่อให้ code สามารถเรียกใช้ได้บน url
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
-
-// app.use(express.json({ limit: "50mb" }));
-// app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // End code cors
 
@@ -161,6 +159,7 @@ app.post("/login", jsonParser, function (req, res, next) {
     });
   });
 });
+
 //function login
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -175,6 +174,7 @@ app.post("/authen", jsonParser, function (req, res, next) {
     res.json({ status: "err", message: err.message });
   }
 });
+
 //function authen
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -374,7 +374,7 @@ app.delete("/delete_information", jsonParser, function (req, res, next) {
 
 //function Get_information
 
-//แสดง ข้อมูลทั้งหมด
+//แสดง ข้อมูล
 app.get("/Getall_information", jsonParser, function (req, res, next) {
   connection.query(
     `SELECT * FROM repair_information`,
@@ -433,50 +433,45 @@ app.get("/Get_req/:?", jsonParser, function (req, res, next) {
   const id = parseInt(req.query.user_id);
   const search = req.query.search;
 
-var sql = `SELECT * FROM repair_information `
+  var sql = `SELECT * FROM repair_information `;
 
-if (staus||id||search) {
-  sql += `WHERE `
-}
-if (!staus){
-  
-}else{
-  sql += ` staus = '${staus}'`
-}
-
-if (!id){
-
-}else{
-  if (staus) {
-    sql += `AND user_id = '${id}'`
-  }else{
-    sql += ` user_id = '${id}'`
+  if (staus || id || search) {
+    sql += `WHERE `;
   }
-  
-}
-if (!search){
-
-}else{
-  if (staus || id) {
-    sql += ` AND name_sender LIKE "%${search}%"`
-  }else {
-    sql += ` name_sender LIKE "%${search}%"`
+  if (!staus) {
+  } else {
+    sql += ` staus = '${staus}'`;
   }
-  
-}
-    // if (!id) {
-    //   var sql = `SELECT * FROM repair_information WHERE staus = '${staus}' `;
-    // } else {
-    //   var sql = `SELECT * FROM repair_information WHERE (staus = '${staus}' AND user_id = ${id} ) `;
-    // }
-    // if (staus === "ทั้งหมด") {
-    //   if (!id) {
-    //     var sql = `SELECT * FROM repair_information `;
-    //   }
-    //   else {
-    //     var sql = `SELECT * FROM repair_information WHERE user_id = ${id} `;
-    //   }
-    // }
+
+  if (!id) {
+  } else {
+    if (staus) {
+      sql += `AND user_id = '${id}'`;
+    } else {
+      sql += ` user_id = '${id}'`;
+    }
+  }
+  if (!search) {
+  } else {
+    if (staus || id) {
+      sql += ` AND name_sender LIKE "%${search}%"`;
+    } else {
+      sql += ` name_sender LIKE "%${search}%"`;
+    }
+  }
+  // if (!id) {
+  //   var sql = `SELECT * FROM repair_information WHERE staus = '${staus}' `;
+  // } else {
+  //   var sql = `SELECT * FROM repair_information WHERE (staus = '${staus}' AND user_id = ${id} ) `;
+  // }
+  // if (staus === "ทั้งหมด") {
+  //   if (!id) {
+  //     var sql = `SELECT * FROM repair_information `;
+  //   }
+  //   else {
+  //     var sql = `SELECT * FROM repair_information WHERE user_id = ${id} `;
+  //   }
+  // }
   // if (search){
   //   var sql = `SELECT * FROM repair_information WHERE name_sender  LIKE "%n%" AND staus = "รอตอบรับ"AND user_id = 5 `
   //   // params.push("%" + search + "%");
@@ -637,10 +632,7 @@ app.get("/Getall_recipient", jsonParser, function (req, res, next) {
     `SELECT recipients,positions FROM recipient_name `,
     function (err, results, fields) {
       if (results) {
-        // var lengthdata = results.length;
-        // var results = results.recipientsrecipients: results[0].recipients, positions:results[0].positions
-        // console.log(results);
-        res.status(200).json({ results });
+        res.status(200).json({ staus: "ok", results });
       } else {
         res.json({ status: false, message: err });
         return;
@@ -650,14 +642,11 @@ app.get("/Getall_recipient", jsonParser, function (req, res, next) {
 });
 
 app.get("/all_recipient", jsonParser, function (req, res, next) {
-  // let id = req.params.id;
   connection.query(
     `SELECT * FROM recipient_name `,
     function (err, results, fields) {
       if (results) {
         var lengthdata = results.length;
-        // var results = results.recipients WHERE recipient_id = ${id}
-        // console.log(results);
         res.status(200).json({ status: true, lengthdata: lengthdata, results });
       } else {
         res.json({ status: false, message: err });
@@ -671,7 +660,8 @@ app.get("/all_recipient", jsonParser, function (req, res, next) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// true - false
+// state code
+
 app.get("/state/:?", jsonParser, function (req, res, next) {
   var stauss = req.query.staus;
   var sql = `SELECT * FROM repair_information WHERE staus = "${stauss}"`;
@@ -679,7 +669,6 @@ app.get("/state/:?", jsonParser, function (req, res, next) {
   connection.query(sql, function (err, results, fields) {
     if (results) {
       var lengthdata = results.length;
-      // ////console.log(results);
       if (lengthdata == 0) {
         res.json({ status: false, lengthdata });
       } else {
@@ -692,7 +681,7 @@ app.get("/state/:?", jsonParser, function (req, res, next) {
   });
 });
 
-// true - false
+// End state code
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -702,65 +691,7 @@ app.get("/state/:?", jsonParser, function (req, res, next) {
 
 // test cod
 
-// app.get("/Search", jsonParser, function (req, res, next) {
-//   const search = req.query.search;
-
-//   var params = [];
-//   var sql = "SELECT * FROM repair_information ";
-//   if (search) {
-//     sql += " WHERE date_repair LIKE ? ";
-//     params.push("%" + search + "%");
-//   }
- 
-  
-//   params.push(search);
-
-//   connection.execute(sql, params, function (err, results, fields) {
-//     ////console.log(results);
-//     res.json({ status: true, results: results });
-//   });
-// });
-
-
-
-
-
-// const storage = multer.diskStorage({
-//   destination: function (req, file, cb) {
-//     cb(null, "audio/");
-//   },
-//   filename: function (req, file, cb) {
-//     cb(null, file.originalname);
-//   },
-// });
-
-// const upload = multer({ storage: storage });
-
-// router.post("/audio", upload.single("audio"), (req, res) => {
-//   res.status(200).json({ message: "Audio file uploaded successfully" });
-// });
-
-//Create getsound API
-
-// function addNumbers(num1, num2) {
-//   return num1 - num2;
-// }
-
-// let result = addNumbers(1100, 640);
-// console.log(result);
-
-// const numbers = [
-
-//   1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-
-// ];
-// const evenNumbers = numbers.filter((num) => num % 2 === 0);
-// console.log(evenNumbers);
-
 // end test code
-
-//Create an API, display audio files.
-//
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
