@@ -431,21 +431,61 @@ app.get("/Get_req/:?", jsonParser, function (req, res, next) {
   const page = parseInt(req.query.page);
   const limit = parseInt(req.query.limit);
   const id = parseInt(req.query.user_id);
-  if (!id) {
-    // console.log("sdf");
-    var sql = `SELECT * FROM repair_information WHERE staus = '${staus}' `;
-  } else {
-    var sql = `SELECT * FROM repair_information WHERE (staus = '${staus}' AND user_id = ${id} ) `;
+  const search = req.query.search;
+
+var sql = `SELECT * FROM repair_information `
+
+if (staus||id||search) {
+  sql += `WHERE `
+}
+if (!staus){
+  
+}else{
+  sql += ` staus = '${staus}'`
+}
+
+if (!id){
+
+}else{
+  if (staus) {
+    sql += `AND user_id = '${id}'`
+  }else{
+    sql += ` user_id = '${id}'`
   }
-  if (staus === "ทั้งหมด") {
-    if (!id) {
-      var sql = `SELECT * FROM repair_information `;
-    } else {
-      var sql = `SELECT * FROM repair_information WHERE user_id = ${id} `;
-    }
-  } else {
-    var reeor = "ไม่พบข้อมูล";
+  
+}
+if (!search){
+
+}else{
+  if (staus || id) {
+    sql += ` AND name_sender LIKE "%${search}%"`
+  }else {
+    sql += ` name_sender LIKE "%${search}%"`
   }
+  
+}
+    // if (!id) {
+    //   var sql = `SELECT * FROM repair_information WHERE staus = '${staus}' `;
+    // } else {
+    //   var sql = `SELECT * FROM repair_information WHERE (staus = '${staus}' AND user_id = ${id} ) `;
+    // }
+    // if (staus === "ทั้งหมด") {
+    //   if (!id) {
+    //     var sql = `SELECT * FROM repair_information `;
+    //   }
+    //   else {
+    //     var sql = `SELECT * FROM repair_information WHERE user_id = ${id} `;
+    //   }
+    // }
+  // if (search){
+  //   var sql = `SELECT * FROM repair_information WHERE name_sender  LIKE "%n%" AND staus = "รอตอบรับ"AND user_id = 5 `
+  //   // params.push("%" + search + "%");
+  //   console.log("search");
+  // }
+  //  else {
+  //   var sql = `SELECT * FROM repair_information `
+  // }
+
   sql += " LIMIT ?,? ";
   const start_idx = (page - 1) * limit;
   var params = [];
@@ -456,7 +496,7 @@ app.get("/Get_req/:?", jsonParser, function (req, res, next) {
     ////console.log(results);
     if (results) {
       var lengthdata = results.length;
-      res.status(200).json({ status: true, results: results, reeor });
+      res.status(200).json({ status: true, results: results });
     } else {
       res.json({ status: false, message: err });
       return;
@@ -660,8 +700,7 @@ app.get("/state/:?", jsonParser, function (req, res, next) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// test code
-
+// test cod
 
 // app.get("/Search", jsonParser, function (req, res, next) {
 //   const search = req.query.search;
